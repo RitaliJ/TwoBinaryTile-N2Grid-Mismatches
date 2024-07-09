@@ -54,24 +54,27 @@ void free_tile_types(uint8_t **tile_types, size_t num_tiles) {
 uint8_t compute_mismatches(size_t arrangement, uint8_t n, u_int8_t** tile_types) {
     uint8_t num_mismatches = 0;
     for (u_int8_t tile_pos = 0; tile_pos < num_tiles; tile_pos++) {
-        u_int8_t tile_info = tile_types[tile_pos][(arrangement & (size_t) pow(2, tile_pos)) >> tile_pos];
+        u_int8_t tile_info = tile_types[tile_pos][(arrangement >> tile_pos) & 1];
+
         if ((tile_pos / n) < n - 1) {
             // compare with tile below
-            u_int8_t bottom_neighbor_info = tile_types[tile_pos + n][(arrangement & (size_t) pow(2, tile_pos + n)) >> (tile_pos + n)];
+            u_int8_t bottom_neighbor_info = tile_types[tile_pos + n][(arrangement >> (tile_pos + n)) & 1];
             // compare the south glue of the current tile to the north glue of the below tile
-            u_int8_t curr_north = (tile_info & (u_int8_t) pow(2, 3) >> 3);
-            u_int8_t bot_south = (bottom_neighbor_info & (u_int8_t) pow(2, 1) >> 1);
-            num_mismatches += curr_north ^ bot_south;
+            u_int8_t curr_south = (tile_info >> 1) & 1;
+            u_int8_t bot_north = (bottom_neighbor_info >> 3) & 1;
+
+            num_mismatches += curr_south ^ bot_north;
         }
         if ((tile_pos % n) < n - 1) {
             // compare with tile to the right
-            u_int8_t right_neighbor_info = tile_types[tile_pos + 1][(arrangement & (size_t) pow(2, tile_pos + 1)) >> (tile_pos + 1)];
+            u_int8_t right_neighbor_info = tile_types[tile_pos + 1][(arrangement >> (tile_pos + 1)) & 1];
             // compare the east glue of the current tile to the west glue of the next tile
-            u_int8_t curr_east = (tile_info & (u_int8_t) pow(2, 2) >> 2);
-            u_int8_t right_west =  (right_neighbor_info & (u_int8_t) pow(2, 0) >> 0);
+            u_int8_t curr_east = (tile_info >> 2) & 1;
+            u_int8_t right_west =  right_neighbor_info & 1;
             num_mismatches += curr_east ^ right_west;
         }
     }
+
     return num_mismatches;
 }
 
@@ -132,6 +135,8 @@ int main(int argc, char *argv[]) {
 
     free(line_buffer);
     fclose(tile_file);
+
+    tile_filename = strrchr(tile_filename, '/') + 1;
     
     printf("Enumerating tile mismatch combinations\n");
     uint8_t *mismatch_enumerations = enumerate_mismatches(n, tile_types);

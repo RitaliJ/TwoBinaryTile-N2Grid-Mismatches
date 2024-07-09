@@ -1,0 +1,7 @@
+Average number of mismatches: 20
+Min NO instance mismatches: 2
+Number of Valid Tilings: 2
+Percentage of Valid Tilings: 0.000000
+Valid Tiling Arrangements (refer to tiledef to determine identities):
+0
+33554431
