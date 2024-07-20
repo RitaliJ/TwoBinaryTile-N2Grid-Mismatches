@@ -5,50 +5,54 @@
 #include <math.h>
 
 size_t num_tilings = 1;
+double gse = 5.43;
 char *mismatch_filename;
 
-size_t compute_mean_mismatches(uint8_t *mismatches) {
-    size_t total = 0;
-    for (size_t i = 0; i < num_tilings; i++) {
-        total += mismatches[i];
-    }
-    return (double) total / num_tilings;
-}
+// Would like to compute the minimum, the boltzmann weighted average, the normal average, and the number of valid tilings
 
-size_t compute_min_incorrect_mismatches(uint8_t *mismatches) {
-    size_t min = (size_t) __DBL_MAX__;
-    for (size_t i = 0; i < num_tilings; i++) {
-        if (mismatches[i] < min && mismatches[i] > 0) {
-            min = mismatches[i];
-        }
-    }
-    return min;
-}
+double *compute_statistics(uint8_t *mismatches) {
+    double *statistics = malloc(sizeof(double) * 6);
+    double total = 0;
+    double boltzmann_weighted_avg = 0;
+    double partition_func = 0;
+    double num_valid_sols = 0;
+    double min = __DBL_MAX__;
+    double prob = 0;
 
-size_t compute_exp_mean_mismatches(uint8_t *mismatches) {
-    size_t total = 0;
     for (size_t i = 0; i < num_tilings; i++) {
-        total += exp(mismatches[i]);
-    }
-    return (double) total / num_tilings;
-}
-
-size_t compute_num_valid_solutions(uint8_t *mismatches) {
-    size_t num_valid_sols = 0;
-    for (size_t i = 0; i < num_tilings; i++) {
+        // Check if the tiling was valid
         if (mismatches[i] == 0) {
             num_valid_sols++;
         }
+
+        // Check if the tiling is a new minimum incorrect
+        if (mismatches[i] < min && mismatches[i] > 0) {
+            min = mismatches[i];
+        }
+
+        // Add to the total to compute the straightforward average 
+        total += mismatches[i];
+        // Compute the probability of seeing this particular state based on gse
+        prob = exp(-gse * mismatches[i]);
+
+        // Add to the partition function as well as the boltzmann expectation
+        boltzmann_weighted_avg += prob * mismatches[i];
+        partition_func += prob;
+
     }
-    return num_valid_sols;
+
+    statistics[0] = num_valid_sols;
+    statistics[1] = min;
+    statistics[2] = total / num_tilings; // average mismatches
+    statistics[3] = boltzmann_weighted_avg; // boltzmann weighted avg mismatches
+    statistics[4] = num_valid_sols / num_tilings; // fraction of valid tilings;
+    statistics[5] = num_valid_sols / partition_func; // Boltzmann weighted fraction correct
+
+    return statistics;
 }
 
-double compute_percentage_valid(size_t num_valid) {
-    return (double) num_valid / num_tilings;
-}
-
-size_t *compute_valid_solutions(uint8_t *mismatches, size_t num_valid) {
-    size_t *valid_arrangements = malloc(sizeof(size_t) * num_valid);
+size_t *compute_valid_solutions(uint8_t *mismatches, double num_valid) {
+    size_t *valid_arrangements = malloc(sizeof(size_t) * (size_t) num_valid);
     size_t j = 0;
     for (size_t i = 0; i < num_tilings && j < num_valid; i++) {
         if (mismatches[i] == 0) {
@@ -73,17 +77,21 @@ int write_statistics(uint8_t *mismatch_enumerations) {
     FILE* statistics_file = fopen(statistics_filename, "w");
     assert(statistics_filename);
     // write in all the statistics here
-    fprintf(statistics_file, "Average number of mismatches: %zu\n", compute_mean_mismatches(mismatch_enumerations));
-    fprintf(statistics_file, "Min NO instance mismatches: %zu\n", compute_min_incorrect_mismatches(mismatch_enumerations));
-    size_t num_valid = compute_num_valid_solutions(mismatch_enumerations);
-    fprintf(statistics_file, "Number of Valid Tilings: %zu\n", num_valid);
-    fprintf(statistics_file, "Percentage of Valid Tilings: %f\n", compute_percentage_valid(num_valid));
+    double *statistics = compute_statistics(mismatch_enumerations);
+
+    fprintf(statistics_file, "Number of Valid Tilings: %zu\n", (size_t) statistics[0]);
+    fprintf(statistics_file, "Min NO instance mismatches: %zu\n", (size_t) statistics[1]);
+    fprintf(statistics_file, "Average number of mismatches: %f\n", statistics[2]);
+    fprintf(statistics_file, "Boltzmann Weighted average number of mismatches: %f\n", statistics[3]);
+    fprintf(statistics_file, "Percentage of Valid Tilings: %f\n", statistics[4]);
+    fprintf(statistics_file, "Boltzmann Weighted Fraction Correct: %f\n", statistics[5]);
+
     fprintf(statistics_file, "Valid Tiling Arrangements (refer to tiledef to determine identities):\n");
-    if (num_valid == 0) {
+    if (statistics[0] == 0) {
         fprintf(statistics_file, "All Invalid\n");
     } else {
-        size_t *valid_arrangements = compute_valid_solutions(mismatch_enumerations, num_valid);
-        for (size_t j = 0; j < num_valid; j++) {
+        size_t *valid_arrangements = compute_valid_solutions(mismatch_enumerations, statistics[0]);
+        for (size_t j = 0; j < statistics[0]; j++) {
             fprintf(statistics_file, "%zu\n", valid_arrangements[j]);
         }
         free(valid_arrangements);
@@ -101,8 +109,9 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < argc; i++) {
         printf("%d: %s\n", i, argv[i]);
     } 
-    assert(argc == 2);
+    assert(argc == 3);
     mismatch_filename = argv[1];
+    gse = argv[2];
     size_t num_tiles = pow((size_t) (mismatch_filename[strlen(mismatch_filename) - 5]-'0'), 2);
     num_tilings = pow(2, num_tiles);
     // printf("num: %zu\n", num_tilings);
