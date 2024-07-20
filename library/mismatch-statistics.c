@@ -11,7 +11,7 @@ char *mismatch_filename;
 // Would like to compute the minimum, the boltzmann weighted average, the normal average, and the number of valid tilings
 
 double *compute_statistics(uint8_t *mismatches) {
-    double *statistics = malloc(sizeof(double) * 6);
+    double *statistics = malloc(sizeof(double) * 7);
     double total = 0;
     double boltzmann_weighted_avg = 0;
     double partition_func = 0;
@@ -33,12 +33,20 @@ double *compute_statistics(uint8_t *mismatches) {
         // Add to the total to compute the straightforward average 
         total += mismatches[i];
         // Compute the probability of seeing this particular state based on gse
-        prob = exp(-gse * mismatches[i]);
+        prob = exp(-gse * (double) mismatches[i]);
 
         // Add to the partition function as well as the boltzmann expectation
         boltzmann_weighted_avg += prob * mismatches[i];
         partition_func += prob;
 
+    }
+
+    // boltzmann_weighted_avg accumulates the mismatch values weighted by their probabilities
+    // partition_func accumulates the total weight (i.e., the sum of all probabilities).
+    // need to normalized, since prob is 1/Z * exp (energy)
+    // treating partition function as a constant and dividing out last!
+    if (partition_func != 0) {
+        boltzmann_weighted_avg /= partition_func;
     }
 
     statistics[0] = num_valid_sols;
@@ -47,6 +55,7 @@ double *compute_statistics(uint8_t *mismatches) {
     statistics[3] = boltzmann_weighted_avg; // boltzmann weighted avg mismatches
     statistics[4] = num_valid_sols / num_tilings; // fraction of valid tilings;
     statistics[5] = num_valid_sols / partition_func; // Boltzmann weighted fraction correct
+    statistics[6] = partition_func;
 
     return statistics;
 }
@@ -85,6 +94,7 @@ int write_statistics(uint8_t *mismatch_enumerations) {
     fprintf(statistics_file, "Boltzmann Weighted average number of mismatches: %f\n", statistics[3]);
     fprintf(statistics_file, "Percentage of Valid Tilings: %f\n", statistics[4]);
     fprintf(statistics_file, "Boltzmann Weighted Fraction Correct: %f\n", statistics[5]);
+    fprintf(statistics_file, "Partition Function Value: %f\n", statistics[6]);
 
     fprintf(statistics_file, "Valid Tiling Arrangements (refer to tiledef to determine identities):\n");
     if (statistics[0] == 0) {
@@ -111,7 +121,7 @@ int main(int argc, char *argv[]) {
     } 
     assert(argc == 3);
     mismatch_filename = argv[1];
-    gse = argv[2];
+    gse = atof(argv[2]);
     size_t num_tiles = pow((size_t) (mismatch_filename[strlen(mismatch_filename) - 5]-'0'), 2);
     num_tilings = pow(2, num_tiles);
     // printf("num: %zu\n", num_tilings);
