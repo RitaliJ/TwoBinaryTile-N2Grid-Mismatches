@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
         while(tile != NULL) {
             u_int8_t tile_uint = binary_string_to_uint(tile);
             tile_types[i][j] = tile_uint;
-            printf("%d, %d: %d\n", i, j, tile_types[i][j]);
+            // printf("%d, %d: %d\n", i, j, tile_types[i][j]);
             tile = strtok(NULL, FILE_DELIM);
             j++;
         }

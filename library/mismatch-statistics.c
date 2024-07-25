@@ -11,11 +11,13 @@ char *mismatch_filename;
 // Would like to compute the minimum, the boltzmann weighted average, the normal average, and the number of valid tilings
 
 double *compute_statistics(uint8_t *mismatches) {
-    double *statistics = malloc(sizeof(double) * 7);
+    double *statistics = malloc(sizeof(double) * 9);
     double total = 0;
     double boltzmann_weighted_avg = 0;
     double partition_func = 0;
     double num_valid_sols = 0;
+    double tot_close_enough = 0;
+    double prob_close_enough = 0; // arbitrarily chosen as <= 2 mismatches
     double min = __DBL_MAX__;
     double prob = 0;
 
@@ -39,6 +41,11 @@ double *compute_statistics(uint8_t *mismatches) {
         boltzmann_weighted_avg += prob * mismatches[i];
         partition_func += prob;
 
+        if (mismatches[i] == 1 || mismatches[i] == 2) {
+            tot_close_enough++;
+            prob_close_enough += prob;
+        }
+
     }
 
     // boltzmann_weighted_avg accumulates the mismatch values weighted by their probabilities
@@ -56,6 +63,9 @@ double *compute_statistics(uint8_t *mismatches) {
     statistics[4] = num_valid_sols / num_tilings; // fraction of valid tilings;
     statistics[5] = num_valid_sols / partition_func; // Boltzmann weighted fraction correct
     statistics[6] = partition_func;
+    statistics[7] = (tot_close_enough + num_valid_sols) / num_tilings; // fraction of tilings "close enough"
+    statistics[8] = (prob_close_enough + num_valid_sols) / partition_func; // Boltzmann fraction of tilings "close enough"
+    
 
     return statistics;
 }
@@ -95,6 +105,9 @@ int write_statistics(uint8_t *mismatch_enumerations) {
     fprintf(statistics_file, "Percentage of Valid Tilings: %f\n", statistics[4]);
     fprintf(statistics_file, "Boltzmann Weighted Fraction Correct: %f\n", statistics[5]);
     fprintf(statistics_file, "Partition Function Value: %f\n", statistics[6]);
+    fprintf(statistics_file, "Fraction \"Close\": %f\n", statistics[7]);
+    fprintf(statistics_file, "Boltzmann Weighted Fraction \"Close\": %f\n", statistics[8]);
+    
 
     fprintf(statistics_file, "Valid Tiling Arrangements (refer to tiledef to determine identities):\n");
     if (statistics[0] == 0) {
