@@ -3,11 +3,19 @@ import numpy as np
 # Generate random 4-bit binary numbers for 25 rows and 2 columns
 random_binary_matrix = np.random.randint(0, 2, (25, 2, 4))
 
-# Convert to binary string format
+# Number of binary numbers per position
+tpp = 2
+glues_p_tile = 4
+num_tiles = 25
+
 binary_string_matrix = []
-for row in random_binary_matrix:
-    binary_row = ["".join(map(str, elem)) for elem in row]
-    binary_string_matrix.append(" ".join(binary_row))
+for i in range(num_tiles):
+    row = set()
+    while len(row) != 2:
+        elem = np.random.randint(0, 2, glues_p_tile)
+        str_elem = "".join(map(str, elem))
+        row.add(str_elem)
+    binary_string_matrix.append(" ".join(row))
 
 # Save to a text file
 file_content = "\n".join(binary_string_matrix)
